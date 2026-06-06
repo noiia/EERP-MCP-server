@@ -1,0 +1,16 @@
+server:
+  # Transport: "sse" (HTTP+SSE), "streamable-http", or "stdio" (Claude Desktop)
+  transport: sse
+  address: ":8080"
+  name: eerp-docs-mcp
+  version: "1.0.0"
+
+docs:
+  # Path to the directory containing Markdown source files.
+  root: "./docs"
+  # Path to the mkdocs.yml configuration file.
+  mkdocs: "./mkdocs.yml"
+
+search:
+  # Maximum number of results returned by search_docs / search_symbols.
+  max_results: 10

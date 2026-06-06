@@ -1,0 +1,24 @@
+services:
+  eerp-mcp:
+    build: .
+    container_name: eerp-mcp-server
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      # Mount your MkDocs project root (containing docs/ and mkdocs.yml).
+      - ${MKDOCS_PROJECT_PATH:-../EERP-Documentation-Wiki}:/mkdocs:ro
+      # Mount a custom config if needed.
+      # - ./configs/config.yaml:/app/configs/config.yaml:ro
+    environment:
+      - TZ=UTC
+    command:
+      - /app/eerp-mcp-server
+      - --config
+      - /app/configs/config.yaml
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
