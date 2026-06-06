@@ -14,3 +14,16 @@ docs:
 search:
   # Maximum number of results returned by search_docs / search_symbols.
   max_results: 10
+
+auth:
+  # Set enabled: true to require OAuth 2.0 authentication (required for claude.ai remote MCP).
+  enabled: false
+  # Canonical base URL of this server — must match what claude.ai sees.
+  issuer: "https://mcp-server.eerp.elnoia.fr"
+  # Admin credentials. Use password_hash (bcrypt) in production:
+  #   ./eerp-mcp-server --gen-hash yourpassword
+  username: admin
+  password: ""
+  password_hash: ""
+  # Access-token lifetime in seconds.
+  token_ttl: 3600

@@ -10,6 +10,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/elnoia/eerp-mcp-server/internal/cache"
 	"github.com/elnoia/eerp-mcp-server/internal/config"
 	"github.com/elnoia/eerp-mcp-server/internal/indexer"
@@ -30,8 +32,18 @@ func run() error {
 		cfgPath  = flag.String("config", "configs/config.yaml", "path to config YAML file")
 		logLevel = flag.String("log-level", "info", "log level: debug, info, warn, error")
 		stdio    = flag.Bool("stdio", false, "use stdio transport (overrides config transport)")
+		genHash  = flag.String("gen-hash", "", "print a bcrypt hash for the given password and exit")
 	)
 	flag.Parse()
+
+	if *genHash != "" {
+		hash, err := bcrypt.GenerateFromPassword([]byte(*genHash), bcrypt.DefaultCost)
+		if err != nil {
+			return fmt.Errorf("bcrypt: %w", err)
+		}
+		fmt.Println(string(hash))
+		return nil
+	}
 
 	logger := buildLogger(*logLevel)
 

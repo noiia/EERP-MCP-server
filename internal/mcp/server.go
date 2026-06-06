@@ -11,25 +11,28 @@ import (
 
 	"github.com/elnoia/eerp-mcp-server/internal/cache"
 	"github.com/elnoia/eerp-mcp-server/internal/config"
+	"github.com/elnoia/eerp-mcp-server/internal/oauth"
 	"github.com/elnoia/eerp-mcp-server/internal/search"
 )
 
 // Server wraps the MCP SDK server and exposes the docs tools.
 type Server struct {
-	cfg    *config.Config
-	cache  *cache.Cache
-	engine *search.Engine
-	sdk    *sdkmcp.Server
-	logger *slog.Logger
+	cfg      *config.Config
+	cache    *cache.Cache
+	engine   *search.Engine
+	sdk      *sdkmcp.Server
+	logger   *slog.Logger
+	oauthSrv *oauth.Server
 }
 
 // New creates and configures an MCP Server, registering all documentation tools.
 func New(cfg *config.Config, c *cache.Cache, e *search.Engine, logger *slog.Logger) *Server {
 	s := &Server{
-		cfg:    cfg,
-		cache:  c,
-		engine: e,
-		logger: logger,
+		cfg:      cfg,
+		cache:    c,
+		engine:   e,
+		logger:   logger,
+		oauthSrv: oauth.New(&cfg.Auth),
 	}
 
 	s.sdk = sdkmcp.NewServer(&sdkmcp.Implementation{
@@ -53,20 +56,25 @@ func (s *Server) RunStdio(ctx context.Context) error {
 }
 
 // HTTPHandler returns an http.Handler that supports both SSE and Streamable HTTP.
-// Path "/" handles the Streamable HTTP transport.
-// Path "/sse" handles the legacy SSE transport.
+// OAuth endpoints are mounted when auth is enabled; MCP endpoints require a valid
+// Bearer token in that case.
 func (s *Server) HTTPHandler() http.Handler {
 	mux := http.NewServeMux()
 
+	if s.oauthSrv != nil {
+		s.oauthSrv.Mount(mux)
+		s.logger.Info("OAuth 2.0 enabled", "issuer", s.cfg.Auth.Issuer)
+	}
+
 	serverFactory := func(r *http.Request) *sdkmcp.Server { return s.sdk }
 
-	// Streamable HTTP (MCP 2025-11-25+).
-	mux.Handle("/mcp", sdkmcp.NewStreamableHTTPHandler(serverFactory, nil))
+	// Streamable HTTP (MCP 2025-11-25+) — protected when auth is enabled.
+	mux.Handle("/mcp", oauth.Middleware(s.oauthSrv, sdkmcp.NewStreamableHTTPHandler(serverFactory, nil)))
 
 	// Legacy SSE transport (Claude Desktop HTTP, older Cursor versions).
-	mux.Handle("/sse", sdkmcp.NewSSEHandler(serverFactory, nil))
+	mux.Handle("/sse", oauth.Middleware(s.oauthSrv, sdkmcp.NewSSEHandler(serverFactory, nil)))
 
-	// Health probe.
+	// Health probe — always public.
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintf(w, `{"status":"ok","documents":%d}`, s.cache.Size())
@@ -79,6 +87,10 @@ func (s *Server) HTTPHandler() http.Handler {
 func (s *Server) RunHTTP(ctx context.Context) error {
 	addr := s.cfg.Server.Address
 	s.logger.Info("starting MCP server", "transport", s.cfg.Server.Transport, "address", addr)
+
+	if s.oauthSrv != nil {
+		s.oauthSrv.StartCleanup(ctx)
+	}
 
 	srv := &http.Server{
 		Addr:    addr,
