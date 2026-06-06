@@ -7,7 +7,7 @@ services:
       - "8080:8080"
     volumes:
       # Mount your MkDocs project root (containing docs/ and mkdocs.yml).
-      - ${MKDOCS_PROJECT_PATH:-../EERP-Documentation-Wiki}:/mkdocs:ro
+      - ../mkdocs:/mkdocs:ro
       # Mount a custom config if needed.
       # - ./configs/config.yaml:/app/configs/config.yaml:ro
     environment:

@@ -7,9 +7,9 @@ server:
 
 docs:
   # Path to the directory containing Markdown source files.
-  root: "./docs"
+  root: "/mkdocs"
   # Path to the mkdocs.yml configuration file.
-  mkdocs: "./mkdocs.yml"
+  mkdocs: "/mkdocs/mkdocs.yml"
 
 search:
   # Maximum number of results returned by search_docs / search_symbols.
